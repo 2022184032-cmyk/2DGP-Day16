@@ -58,6 +58,7 @@ class Zombie:
     def update(self):
         self.frame = (self.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % FRAMES_PER_ACTION
         # fill here
+        self.bt.run()
 
 
     def draw(self):
@@ -82,30 +83,49 @@ class Zombie:
 
     def set_target_location(self, x=None, y=None):
         # 여기를 채우시오.
-        pass
-
+        if x is None or y is None:
+            raise ValueError('목적지 좌표가 주어지지 않았습니다.')
+        self.tx, self.tx = x, y
+        return BehaviorTree.SUCCESS # 목적지 좌표 설정 임무 완료
 
 
     def distance_less_than(self, x1, y1, x2, y2, r):
         # 여기를 채우시오.
-        pass
+        distance2 = (x1 - x2) **2 + (y1 - y2)**2
+        return distance2 < (PIXEL_PER_METER*r)**2
 
 
 
     def move_little_to(self, tx, ty):
-        # 여기를 채우시오.
+        self.dir = math.atan2(ty - self.y, tx - self.x)
+        distance = game_framework.frame_time * RUN_SPEED_PPS
+        self.x += distance * math.cos(self.dir)
+        self.y += distance * math.sin(self.dir)
+
         pass
 
 
 
     def move_to(self, r=0.5):
         # 여기를 채우시오.
+        self.state = 'Walk'
+        self.move_little_to(self.tx, self.ty)
+        #좀비가 목적지에 도착했는지 검사
+        if self.distance_less_than(self.tx, self.ty, self.x, self.y, r):
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.RUNNING
+
+
+
         pass
 
 
 
     def set_random_location(self):
         # 여기를 채우시오.
+        self.tx, self.ty = random.randint(100, 924), random.randint(100, 924)
+        return BehaviorTree.SUCCESS
         pass
 
 
@@ -126,6 +146,14 @@ class Zombie:
 
     def build_behavior_tree(self):
         # 여기를 채우시오.
+        a1 = Action("목적지 설정", self.set_target_location, 1000, 1000)
+        a2 = Action("목적지로 이동", self.move_to)
+        root = Sequence("지정된 목적지로 이동", a1, a2)
+
+        a3 = Action("랜덤 위치 설정",self.set_random_location)
+        root = wander = Sequence("랜덤 위치로 이동", a3, a2)
+
+        self.bt = BehaviorTree(root)
         pass
 
 
