@@ -5,7 +5,7 @@ import math
 import game_framework
 import game_world
 from behavior_tree import BehaviorTree, Action, Sequence, Condition, Selector
-
+import common
 
 # zombie Run Speed
 PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
@@ -47,7 +47,9 @@ class Zombie:
 
         self.tx, self.ty = 1000, 1000
         # 여기를 채우시오.
-
+        self.patrol_locations = [(43, 274), (1118, 274), (1050, 494), (575, 804), (235, 991), (575, 804), (1050, 494),
+                                 (1118, 274)]
+        self.loc_no = 0
         self.build_behavior_tree()
 
 
@@ -68,8 +70,6 @@ class Zombie:
             Zombie.images[self.state][int(self.frame)].draw(self.x, self.y, 100, 100)
         self.font.draw(self.x - 10, self.y + 60, f'{self.ball_count}', (0, 0, 255))
         Zombie.marker_image.draw(self.tx+25, self.ty-25)
-
-
 
         draw_rectangle(*self.get_bb())
 
@@ -131,27 +131,84 @@ class Zombie:
 
     def if_boy_nearby(self, distance):
         # 여기를 채우시오.
-        pass
+        if self.distance_less_than(self.x, self.y, common.boy.x, common.boy.y, distance):
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.FAIL
 
 
     def move_to_boy(self, r=0.5):
         # 여기를 채우시오.
+        self.state = 'Walk'
+        #소년 쪽으로 살짝 이동
+        self.move_little_to(common.boy.x, common.boy.y)
+        #좀비가 소년에게 도착했는지 검사
+        if self.distance_less_than(self.x, self.y, common.boy.x, common.boy.y, r):
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.RUNNING # 아직 소년한테 가지 않음
         pass
 
+    def run_away_from_boy(self, r=7):
+        self.state = 'Walk'
+
+        dx = self.x - common.boy.x
+        dy = self.y - common.boy.y
+
+        tx = self.x + dx
+        ty = self.y + dy
+
+        self.move_little_to(tx, ty)
+
+        if not self.distance_less_than(self.x, self.y, common.boy.x, common.boy.y, r):
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.RUNNING
 
     def get_patrol_location(self):
         # 여기를 채우시오.
+        self.tx, self.ty = self.patrol_locations[self.loc_no]
+        self.loc_no = (self.loc_no + 1) % len(self.patrol_locations)
+
         pass
+
+    def zombie_has_more_or_equal_balls(self):
+        if self.ball_count >= common.boy.ball_count:
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.FAIL
+
+    def zombie_has_more_balls(self):
+        if self.ball_count >= common.boy.ball_count:
+            return BehaviorTree.SUCCESS
+        else:
+            return BehaviorTree.FAIL
 
 
     def build_behavior_tree(self):
         # 여기를 채우시오.
         a1 = Action("목적지 설정", self.set_target_location, 1000, 1000)
         a2 = Action("목적지로 이동", self.move_to)
-        root = Sequence("지정된 목적지로 이동", a1, a2)
+        Sequence("지정된 목적지로 이동", a1, a2)
 
         a3 = Action("랜덤 위치 설정",self.set_random_location)
-        root = wander = Sequence("랜덤 위치로 이동", a3, a2)
+        wander = Sequence("랜덤 위치로 이동", a3, a2)
+
+        c1 = Condition('소년이 근처에 있는가', self.if_boy_nearby, 7)
+        a4 = Action('소년 추적', self.move_to_boy)
+        chase_boy_if_nearby = Sequence('소년이 근처에 있으면 추적', c1, a4)
+
+        a6 = Action('소년에게 도망', self.run_away_from_boy)
+        run_away_from_boy_if_nearby = Sequence('소년이 근처에 있으면 도망', c1, a6)
+
+        chase_or_wander = Selector('추적 아니면 배회', chase_boy_if_nearby, wander)
+
+        a5 = Action('다음 순찰 위치 획득', self.get_patrol_location)
+        patrol = Sequence('순찰', a5, a2)
+
+        #root = chase_boy_if_nearby = Selector('추적 아니면 순찰', chase_boy_if_nearby, patrol)
+        #root = run_away_from_boy_if_nearby = Sequence('소년이 근처에 있으면 도망', c1, a6)
+
 
         self.bt = BehaviorTree(root)
         pass
