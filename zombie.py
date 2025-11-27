@@ -207,7 +207,7 @@ class Zombie:
         patrol = Sequence('순찰', a5, a2)
 
         #root = chase_boy_if_nearby = Selector('추적 아니면 순찰', chase_boy_if_nearby, patrol)
-        #root = run_away_from_boy_if_nearby = Sequence('소년이 근처에 있으면 도망', c1, a6)
+        root = run_away_from_boy_if_nearby = Sequence('소년이 근처에 있으면 도망', c1, a6)
 
 
         self.bt = BehaviorTree(root)
